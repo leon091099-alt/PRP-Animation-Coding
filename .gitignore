@@ -1,0 +1,8 @@
+node_modules
+scripts/.cache
+proto/dist
+*.log
+scripts/out/geo.json
+scripts/out/shots
+scripts/out/modes
+scripts/out/contact*.png

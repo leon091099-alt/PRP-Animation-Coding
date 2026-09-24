@@ -1,0 +1,28 @@
+{
+  "name": "river-bridge",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build:geo": "node scripts/build-geo.mjs",
+    "dev": "vite proto",
+    "build": "vite build proto",
+    "typecheck": "tsc --noEmit",
+    "shots": "node scripts/screenshots.mjs"
+  },
+  "devDependencies": {
+    "@turf/turf": "^7.4.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.169.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "playwright": "^1.56.1",
+    "pngjs": "^7.0.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "shapefile": "^0.6.6",
+    "three": "^0.169.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noImplicitAny": false,
+    "skipLibCheck": true,
+    "lib": ["ES2021", "DOM", "DOM.Iterable"],
+    "types": [],
+    "paths": { "@revyme/runtime": ["./proto/revyme-runtime.ts"] },
+    "noEmit": true
+  },
+  "include": ["src", "proto/*.tsx", "proto/revyme-runtime.ts"]
+}
