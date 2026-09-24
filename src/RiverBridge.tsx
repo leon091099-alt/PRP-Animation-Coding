@@ -399,15 +399,20 @@ function plateRect(c: V2, m: { w: number; d: number }, s: number): Rect {
   return { minX: c[0] - (m.w * s) / 2, maxX: c[0] + (m.w * s) / 2, minZ: c[1] - (m.d * s) / 2, maxZ: c[1] + (m.d * s) / 2 };
 }
 // Kinoshita-Mäander entlang einer glatten Leitkurve zwischen den Mündungen
-function buildMeander(A0: V2, B0: V2, cn: Rect, rh: Rect, bends: number, amp: number, scale: number, gap = 2.1) {
+function buildMeander(A0: V2, B0: V2, cn: Rect, rh: Rect, bends: number, amp: number, scale: number, gap = 2.1, dA: V2 = [0, 1], dB: V2 = [-1, 0]) {
   // Leitkurve: Mündung → Süden aus der China-Platte → um deren Südostecke → Lücke zwischen den Platten
   // → westlich an der Rhein-Platte hoch → von Westen in die Rhein-Mündung.
   const g = gap * scale;
-  const A1: V2 = [A0[0], cn.maxZ + g * 0.8];
+  // Austritt entlang der Stamm-Richtung an der Mündung (nahtloser Übergang), dann nach Süden bzw. Westen
+  const tA = dA[1] > 0.3 ? (cn.maxZ + g * 0.8 - A0[1]) / dA[1] : 0;
+  const A1: V2 = tA > 0 ? [A0[0] + dA[0] * tA * 0.5, cn.maxZ + g * 0.8] : [A0[0], cn.maxZ + g * 0.8];
   const A2: V2 = [cn.maxX + g, cn.maxZ + g * 0.6];
-  const B1: V2 = [rh.minX - g, B0[1]];
+  const tB = dB[0] < -0.3 ? (rh.minX - g - B0[0]) / dB[0] : 0;
+  const B1: V2 = tB > 0 ? [rh.minX - g, B0[1] + dB[1] * tB * 0.5] : [rh.minX - g, B0[1]];
+  const A05: V2 = [A0[0] + dA[0] * 0.5 * scale, A0[1] + dA[1] * 0.5 * scale];
+  const B05: V2 = [B0[0] + dB[0] * 0.5 * scale, B0[1] + dB[1] * 0.5 * scale];
   const M: V2 = [(cn.maxX + rh.minX) / 2, (cn.minZ + rh.maxZ) / 2];
-  let guide = resample([A0, A1, A2, M, B1, B0], 0.05);
+  let guide = resample([A0, A05, A1, A2, M, B1, B05, B0], 0.05);
   // glätten (Enden fixiert → Mündungsrichtung bleibt erhalten)
   for (let it = 0; it < 40; it++) {
     const nx = guide.map((p) => p.slice() as V2);
@@ -457,6 +462,7 @@ function buildMeander(A0: V2, B0: V2, cn: Rect, rh: Rect, bends: number, amp: nu
     let i0 = 0, i1 = pts.length - 1;
     while (i0 < pts.length - 1 && inside(pts[i0], cn, 0)) i0++;
     while (i1 > 0 && inside(pts[i1], rh, 0)) i1--;
+    i0 += 30; i1 -= 30; // ~1.2 Einheiten Austrittszone an den Mündungen nicht verschieben
     let moved = false;
     for (let i = i0; i <= i1; i++) for (const r of [cn, rh]) {
       const p = pts[i];
@@ -471,6 +477,15 @@ function buildMeander(A0: V2, B0: V2, cn: Rect, rh: Rect, bends: number, amp: nu
   }
   pts = resample(pts, 0.04);
   return { pts, s: cumLen(pts) };
+}
+
+// Fließrichtung des Stamms an der Mündung (letzte ~0.4 Einheiten), Fallback: Spec-Richtung
+function trunkDir(m: SideModel): V2 {
+  const t = m.veins.find((v) => v.order === 1);
+  if (!t || t.pts.length < 4) return m.mouthDir;
+  const a = t.pts[Math.max(0, t.pts.length - 14)], b = t.pts[t.pts.length - 1];
+  const l = d2(a, b) || 1;
+  return [(b[0] - a[0]) / l, (b[1] - a[1]) / l];
 }
 
 // ============================================================================ Shader-Helfer
@@ -715,8 +730,9 @@ class RiverEngine {
     const cEnd = plateCenters(R, R.tilt, 1);
     const rc = plateRect(cEnd.cn, this.models.cn, s), rr = plateRect(cEnd.rh, this.models.rh, s);
     // Verbindung beginnt 0.06 innerhalb der Mündung → nahtlose Überlappung mit dem Stamm
-    const mouthW = (k: SideKey): V2 => { const m = this.models[k]; return [cEnd[k][0] + (m.mouth[0] - m.mouthDir[0] * 0.06) * s, cEnd[k][1] + (m.mouth[1] - m.mouthDir[1] * 0.06) * s]; };
-    this.meander = buildMeander(mouthW('cn'), mouthW('rh'), rc, rr, R.bends, P.meanderAmplitude, s, R.gap);
+    const dir = (k: SideKey) => trunkDir(this.models[k]);
+    const mouthW = (k: SideKey): V2 => { const m = this.models[k], d = dir(k); return [cEnd[k][0] + (m.mouth[0] - d[0] * 0.06) * s, cEnd[k][1] + (m.mouth[1] - d[1] * 0.06) * s]; };
+    this.meander = buildMeander(mouthW('cn'), mouthW('rh'), rc, rr, R.bends, P.meanderAmplitude, s, R.gap, dir('cn'), dir('rh'));
     const ms = this.meander.s, L = ms[ms.length - 1];
     const mid = ms.findIndex((x) => x >= L / 2);
     this.meet = this.meander.pts[Math.max(0, mid)];
@@ -752,7 +768,8 @@ class RiverEngine {
   }
   // Abstand + Ziel so wählen, dass alle Punkte mit 8 % Rand ins Bild passen
   private fit(points: THREE.Vector3[]) {
-    const lim = 0.84, tilt = this.R.tilt;
+    // Rand 8 % (NDC 0.84); im Hochformat horizontal 5 %, da die 62°-Diagonale breitenbegrenzt ist
+    const limY = 0.84, limX = this.R.bp === 'mob' ? 0.9 : 0.84, tilt = this.R.tilt;
     const target = new THREE.Vector3();
     points.forEach((p) => target.add(p)); target.divideScalar(points.length); target.y = 0;
     let dist = 30;
@@ -762,7 +779,7 @@ class RiverEngine {
         const mid = (lo + hi) / 2;
         this.placeCamera(target, mid, tilt, 0);
         let ok = true;
-        for (const p of points) { const q = this.tmp.copy(p).project(this.camera); if (q.z > 1 || Math.abs(q.x) > lim || Math.abs(q.y) > lim) { ok = false; break; } }
+        for (const p of points) { const q = this.tmp.copy(p).project(this.camera); if (q.z > 1 || Math.abs(q.x) > limX || Math.abs(q.y) > limY) { ok = false; break; } }
         if (ok) hi = mid; else lo = mid;
       }
       dist = hi;
@@ -973,7 +990,7 @@ class RiverEngine {
         for (let i = 0; i < v.pts.length; i += 5) {
           if (v.net[i] / m.netMax < 1 - u3) continue;
           const sp = this.toScreen(g.x + v.pts[i][0] * s, g.y + v.ys[i] * s, g.z + v.pts[i][1] * s);
-          markers.push({ x: sp.x - 2, y: sp.y - 2, w: 4, h: 4, id: '~' });
+          markers.push({ x: sp.x - 2, y: sp.y - 2, w: 4, h: 4, id: '~v' });
         }
       }
     }
@@ -985,7 +1002,7 @@ class RiverEngine {
         const a = ms[i] / L;
         if (Math.min(a, 1 - a) > 0.5 * cu) continue;
         const sp = this.toScreen(mp[i][0], CONN_Y, mp[i][1]);
-        markers.push({ x: sp.x - 3, y: sp.y - 3, w: 6, h: 6, id: '~' });
+        markers.push({ x: sp.x - 3, y: sp.y - 3, w: 6, h: 6, id: '~m' });
       }
     }
     const sorted = this.labels.slice().sort((a, b) => b.prio - a.prio);
@@ -993,7 +1010,12 @@ class RiverEngine {
       if (!l.vis || l.op <= 0.01) { l.vis = false; continue; }
       // Stadtlabels: bevorzugte Seite laut Spec, bei Konflikt/Bildrand Ausweichseiten
       const cands = l.city ? [l.pos!, ...LABEL_FALLBACK[l.pos!]] : [''];
+      // Hindernisse: Städte → Marker, Adern, Verbindung · Gewässer → Marker, Verbindung · Titel → Verbindung
+      const blocks = (m: { id: string }) => (l.city ? m.id !== l.city.id : l.kind === 'water' ? m.id !== '~v' : m.id === '~m');
       let ok = false;
+      // Primärstädte (Shenzhen, Köln) immer zeigen: zweiter Durchgang nur gegen andere Labels
+      for (const strict of l.kind === 'primary' ? [true, false] : [true]) {
+      if (ok) break;
       for (const c of cands) {
         if (l.city) placeAt(l, c);
         const rw = l.rot ? Math.abs(l.w * Math.cos(l.rot)) + Math.abs(l.h * Math.sin(l.rot)) : l.w;
@@ -1001,8 +1023,9 @@ class RiverEngine {
         const r = { x: l.x + (l.w - rw) / 2 - 2, y: l.y + (l.h - rh) / 2 - 2, w: rw + 4, h: rh + 4 };
         const out = r.x < 4 || r.y < 4 || r.x + r.w > this.W - 6 || r.y + r.h > this.H - 4;
         const hit = (o: typeof r) => !(r.x > o.x + o.w || r.x + r.w < o.x || r.y > o.y + o.h || r.y + r.h < o.y);
-        if (out || shown.some(hit) || (l.kind !== 'title' && markers.some((m) => (l.city ? m.id !== l.city.id : m.id !== '~') && hit(m)))) continue;
+        if (out || shown.some(hit) || (strict && markers.some((m) => blocks(m) && hit(m)))) continue;
         shown.push(r); ok = true; break;
+      }
       }
       if (!ok) l.vis = false;
     }
@@ -1092,6 +1115,9 @@ function RiverBridge(input: Partial<RBProps> & Record<string, any>) {
   const props = { ...input } as any;
   const P: RBProps = { ...DEFAULTS };
   (Object.keys(DEFAULTS) as (keyof RBProps)[]).forEach((k) => { if (props[k] !== undefined && props[k] !== null && props[k] !== '') (P as any)[k] = props[k]; });
+  // ungültige Werte aus dem Builder abfangen
+  if (!ARIA[P.locale]) P.locale = 'en';
+  if (!['scroll', 'scrollParent', 'autoplay'].includes(P.mode)) P.mode = 'scroll';
   const isStatic = useStaticCanvas();
   const rootRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);

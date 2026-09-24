@@ -5,7 +5,7 @@ Flussnetze als Adergeflecht, mäandrierende Verbindung (Kinoshita) von Mündung 
 
 **Lieferobjekt:** [`src/RiverBridge.tsx`](src/RiverBridge.tsx) – eine Datei, Geo-Daten inline (~93 KB), nur `three` als Abhängigkeit.
 
-![Endzustand Desktop](docs/shots/p1_1440.png)
+![Ablauf p = 0.05 … 1.0](docs/shots/overview.png)
 
 ## Einbau in Revyme
 
