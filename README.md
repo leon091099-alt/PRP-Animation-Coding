@@ -1,3 +1,15 @@
+# River Scene – China ↔ Deutschland (aktuelle Variante)
+
+**Lieferobjekt:** [`src/RiverScene.revyme.jsx`](src/RiverScene.revyme.jsx) = Revyme-Fassung (liegt im Revyme-Projekt als `components/RiverScene.tsx`), typisierte Quelle: [`src/RiverScene.tsx`](src/RiverScene.tsx).
+Nachbau der Referenz (`river-scene.jsx`, Video): Städte ploppen auf → Adern im Perlfluss-Delta → Hauptader über das Meer → Rhein hinauf bis Köln → Idle (Wasser fließt).
+Reines SVG + HTML, nur React. Modi: Scroll (eigene Höhe), Scroll (Eltern-Sektion), Autoplay. Hochformat: automatische Kamerafahrt China → Route → Rheinland → Gesamtbild.
+
+![Ablauf](docs/scene/overview.png)
+
+Hinweis Revyme: Funktionen dürfen nicht `animate(`, `hover(` oder `press(` heißen – Revyme importiert sonst automatisch framer-motion (Namenskollision).
+
+---
+
 # River Bridge – 3D-Kartenanimation (PearlRhine Partners)
 
 Revyme Code Component nach Spec v2: Perlflussdelta und Rheinkorridor als Reliefmodell-Kartenplatten,
