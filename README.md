@@ -1,3 +1,15 @@
+# River Flow Background – animierter Hintergrund
+
+**Lieferobjekt:** [`src/RiverFlowBackground.jsx`](src/RiverFlowBackground.jsx) (im Revyme-Projekt als `components/RiverFlowBackground.tsx`).
+Nach Video „Fluss-Strömung horizontal“: zwei Delta-Fächer, mäandrierender Hauptstrom mit Lichtkern, fließende Impulse, zwei Unschärfe-Ebenen (Detail + Glow), Filmkorn, Maus-Parallaxe. Hochformat: Strom vertikal. Canvas 2D, keine Abhängigkeiten.
+Einbau: als absolut positionierte Ebene (inset 0) hinter den Inhalt einer Sektion legen; Thema `light` (Ivory) oder `deep` (Deep Rhine).
+
+| Hell | Dunkel | Mobil |
+|---|---|---|
+| ![](docs/background/bg_light.png) | ![](docs/background/bg_deep.png) | ![](docs/background/bg_mob.png) |
+
+---
+
 # River Scene – China ↔ Deutschland (aktuelle Variante)
 
 **Lieferobjekt:** [`src/RiverScene.revyme.jsx`](src/RiverScene.revyme.jsx) = Revyme-Fassung (liegt im Revyme-Projekt als `components/RiverScene.tsx`), typisierte Quelle: [`src/RiverScene.tsx`](src/RiverScene.tsx).
